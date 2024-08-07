@@ -1,0 +1,40 @@
+#pragma kernel CSMain
+RWStructuredBuffer<float> dA;
+RWStructuredBuffer<float> dB;
+RWStructuredBuffer<float> dC;
+#define Xsqrt fast_sqrt
+int loopnum;
+
+float fast_resqrt(const float x)
+{
+    float xhalf = 0.5 * x;//1cycles
+    int ui = 0x5f3759df - (asint(x) >> 1);//2cycles
+    float ux = asfloat(ui);
+    ux = ux * (1.5 - xhalf * ux * ux);//3cycles
+    ux = ux * (1.5 - xhalf * ux * ux); //3cycles
+    return ux;
+}
+
+float fast_sqrt(const float x)
+{
+    return x * fast_resqrt(x);//1cycles
+}
+
+
+
+[numthreads(256, 1, 1)]
+void CSMain(uint2 id2 : SV_DispatchThreadID)
+{
+    uint id = id2.x + id2.y * 256 * 1024;
+    float aa = dA[id] + id;
+    float bb = dB[id] + id;
+    
+    for (uint i = 0; i < loopnum; i++)
+    {
+        bb = Xsqrt(bb) + aa;
+        bb = Xsqrt(bb) + aa;
+        bb = Xsqrt(bb) + aa;
+        bb = Xsqrt(bb) + aa;
+    }
+    dC[id] = bb;
+}
