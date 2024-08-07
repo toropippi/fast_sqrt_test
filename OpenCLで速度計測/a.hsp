@@ -1,0 +1,32 @@
+#include "HSPCL64.as"
+	HCLinit
+	HCLSetDevice 0
+	prg=HCLCreateProgram("ThroughputTest.cl")
+	krn=HCLCreateKernel(prg,"mainkernel")
+
+	//バイナリ出力save
+	//binarystring = HCLGetProgramBinary(prg)
+	//bsave "binarystring.txt",binarystring
+	
+	n=1024*1024*256
+	clmemA=HCLCreateBuffer(n*4)
+	clmemB=HCLCreateBuffer(n*4)
+	clmemC=HCLCreateBuffer(n*4)
+	HCLFillBuffer clmemA,0
+	HCLFillBuffer clmemB,0
+	HCLFillBuffer clmemC,0
+	
+	HCLSetkrns krn,clmemA,clmemB,clmemC,32
+	HCLDoKrn1 krn,n,256,0//GPUで計算。ここの第4引数の0は、この命令をevent_id 0に登録するという意味
+	HCLFinish
+	HCLWaitForEvent 0
+	
+	HCLDoKrn1 krn,n,256,1//GPUで計算。ここの第4引数の0は、この命令をevent_id 0に登録するという意味
+	HCLWaitForEvent 1
+	HCLFinish
+	
+	//eventから時間情報を取得。戻り値は64bit int
+	start_time=HCLGetEventLogs(1,6)//6はCL_PROFILING_COMMAND_STARTのtime
+	end_time=HCLGetEventLogs(1,7)//7はCL_PROFILING_COMMAND_ENDのtime
+	mes "計算時間"+(float(end_time-start_time)*0.001*0.001)+"ms"
+	
